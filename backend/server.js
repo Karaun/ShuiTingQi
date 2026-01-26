@@ -7,7 +7,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Paths
-const frontDir = path.join(__dirname, '..', 'travel+');
+const frontDir = path.join(__dirname, 'travel+');
 const dataDir = path.join(__dirname, 'data');
 const poisFile = path.join(dataDir, 'pois.json');
 const routesFile = path.join(dataDir, 'routes.json');
@@ -33,7 +33,7 @@ app.use(express.json({ limit: '1mb' }));
 app.use('/', express.static(frontDir));
 // Serve admin static pages
 app.get('/admin', (req, res) => {
-  res.sendFile(path.join(__dirname, 'admin', 'hydrophone.html'));
+  res.sendFile(path.join(__dirname, 'admin', 'index.html'));
 });
 app.use('/admin', express.static(path.join(__dirname, 'admin')));
 
