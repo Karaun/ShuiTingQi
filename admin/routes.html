@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>路线管理</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Microsoft YaHei", sans-serif; margin: 24px; }
+    h1 { margin: 0 0 16px; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; }
+    input, textarea, button { padding: 8px 10px; font-size: 14px; }
+    input { width: 240px; }
+    textarea { width: 420px; height: 96px; }
+    table { border-collapse: collapse; margin-top: 16px; width: 100%; }
+    th, td { border: 1px solid #ddd; padding: 8px; font-size: 14px; vertical-align: top; }
+    th { background: #f5f5f5; text-align: left; }
+    .muted { color: #666; font-size: 12px; }
+    code { background: #f7f7f7; padding: 2px 4px; border-radius: 3px; }
+  </style>
+</head>
+<body>
+  <script>
+    // Redirect old standalone page to unified admin
+    location.replace('/admin/index.html');
+  </script>
+  <noscript>该页面已合并，请访问 /admin/index.html</noscript>
+  <h1>路线管理</h1>
+  <div class="muted">coords 为经纬度数组，如 <code>[[120.38,36.07],[120.40,36.08]]</code></div>
+  <div class="row" style="margin-top:8px;">
+    <input id="name" placeholder="路线名称 name" />
+    <textarea id="coords" placeholder='经纬度数组 JSON，如: [[120.38,36.07],[120.40,36.08]]'></textarea>
+    <button id="create">新增</button>
+  </div>
+
+  <table id="tbl">
+    <thead>
+      <tr>
+        <th style="width: 220px;">名称</th>
+        <th>坐标数组 (JSON)</th>
+        <th style="width: 200px;">创建时间</th>
+        <th style="width: 150px;">操作</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    const api = {
+      list: async () => (await fetch('/api/routes')).json(),
+      create: async (payload) => (await fetch('/api/routes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })).json(),
+      update: async (id, payload) => (await fetch('/api/routes/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })).json(),
+      remove: async (id) => fetch('/api/routes/' + id, { method: 'DELETE' })
+    };
+
+    const $ = (sel) => document.querySelector(sel);
+    const tbody = $('#tbl tbody');
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[s]));
+    }
+
+    function trFor(item) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><input value="${escapeHtml(item.name)}" data-k="name"/></td>
+        <td><textarea data-k="coords">${escapeHtml(JSON.stringify(item.coords))}</textarea></td>
+        <td>${new Date(item.createdAt).toLocaleString()}</td>
+        <td>
+          <button data-act="save">保存</button>
+          <button data-act="del" style="margin-left:8px;color:#a00">删除</button>
+        </td>
+      `;
+      tr.dataset.id = item.id;
+      return tr;
+    }
+
+    async function refresh() {
+      const list = await api.list();
+      tbody.innerHTML = '';
+      list.forEach(item => tbody.appendChild(trFor(item)));
+    }
+
+    $('#create').addEventListener('click', async () => {
+      const name = $('#name').value.trim();
+      let coords;
+      try { coords = JSON.parse($('#coords').value); } catch (e) { alert('请填写合法 JSON 坐标数组'); return; }
+      if (!name || !Array.isArray(coords) || coords.length === 0) { alert('请填写名称与合法坐标数组'); return; }
+      await api.create({ name, coords });
+      $('#name').value=''; $('#coords').value='';
+      await refresh();
+    });
+
+    tbody.addEventListener('click', async (e) => {
+      if (e.target.tagName !== 'BUTTON') return;
+      const tr = e.target.closest('tr');
+      const id = tr.dataset.id;
+      if (e.target.dataset.act === 'del') {
+        if (confirm('确认删除该路线？')) {
+          await api.remove(id);
+          await refresh();
+        }
+        return;
+      }
+      if (e.target.dataset.act === 'save') {
+        const name = tr.querySelector('input[data-k="name"]').value.trim();
+        let coords;
+        try { coords = JSON.parse(tr.querySelector('textarea[data-k="coords"]').value); } catch (e2) { alert('请填写合法 JSON 坐标数组'); return; }
+        if (!name || !Array.isArray(coords) || coords.length === 0) { alert('请填写名称与合法坐标数组'); return; }
+        await api.update(id, { name, coords });
+        await refresh();
+      }
+    });
+
+    refresh();
+  </script>
+</body>
+</html>
