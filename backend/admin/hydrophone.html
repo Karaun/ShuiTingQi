@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>水听器监控</title>
+  <style>
+    :root { --bg:#0b1220; --panel:#0f172a; --text:#e5e7eb; --muted:#94a3b8; --accent:#22d3ee; --border:#1f2a44; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Microsoft YaHei", sans-serif; background: var(--bg); color: var(--text); }
+    header { padding:16px 24px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+    header h1 { margin:0; font-size:18px; letter-spacing:.5px; }
+    main { padding:20px 24px; }
+    .panel { background: var(--panel); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:16px; box-shadow: 0 1px 2px rgba(0,0,0,.3); }
+    .title { margin:0 0 12px; font-size:16px; }
+    .muted { color: var(--muted); font-size:12px; }
+    .grid { display:grid; grid-template-columns: repeat(2, minmax(220px, 1fr)); gap:14px; }
+    @media (max-width: 700px) { .grid { grid-template-columns: 1fr; } }
+    .kv { background: rgba(255,255,255,.02); padding:12px; border-radius:10px; border:1px solid var(--border); }
+    .kv .k { color: var(--muted); font-size:12px; margin-bottom:6px; }
+    .kv .v { font-size:20px; color:#e2e8f0; }
+    .row { display:flex; gap:10px; align-items:center; flex-wrap: wrap; }
+    select, button { background:#0b1329; color:#e5e7eb; border:1px solid var(--border); border-radius:10px; padding:10px 12px; }
+    button.primary { background: linear-gradient(90deg,#0ea5e9,#22d3ee); color:#0b1220; border:none; }
+    a { color: var(--accent); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>水听器监控</h1>
+    <nav>
+      <a href="/admin/" title="返回管理首页">返回管理首页</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="panel">
+      <h2 class="title">当前状态</h2>
+      <div class="grid">
+        <div class="kv"><div class="k">经度</div><div id="hp_longitude" class="v">-</div></div>
+        <div class="kv"><div class="k">纬度</div><div id="hp_latitude" class="v">-</div></div>
+        <div class="kv"><div class="k">航向</div><div id="hp_heading" class="v">-</div></div>
+        <div class="kv"><div class="k">温度</div><div id="hp_temperature" class="v">-</div></div>
+        <div class="kv"><div class="k">湿度</div><div id="hp_humidity" class="v">-</div></div>
+        <div class="kv"><div class="k">气压</div><div id="hp_pressure" class="v">-</div></div>
+        <div class="kv"><div class="k">盐度</div><div id="hp_salinity" class="v">-</div></div>
+        <div class="kv"><div class="k">是否识别到船只</div><div id="hp_shipDetected" class="v">-</div></div>
+        <div class="kv"><div class="k">船只类型</div><div id="hp_shipType" class="v">-</div></div>
+        <div class="kv"><div class="k">更新时间</div><div id="hp_timestamp" class="v">-</div></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2 class="title">刷新设置</h2>
+      <div class="row">
+        <select id="hp_interval">
+          <option value="1000">每1秒</option>
+          <option value="2000" selected>每2秒</option>
+          <option value="5000">每5秒</option>
+          <option value="10000">每10秒</option>
+        </select>
+        <button id="hp_toggle" class="primary">开始刷新</button>
+      </div>
+      <div class="muted" style="margin-top:8px;">通过 POST /api/hydrophone/update 推送数据。</div>
+    </section>
+  </main>
+
+  <script>
+    const $ = sel => document.querySelector(sel);
+    let hpTimer = null;
+    async function fetchHydrophone(){
+      try {
+        const res = await fetch('/api/hydrophone/latest');
+        if (!res.ok) return;
+        const p = await res.json();
+        $('#hp_longitude').textContent = (p.longitude ?? '-')
+        $('#hp_latitude').textContent = (p.latitude ?? '-')
+        $('#hp_heading').textContent = (p.heading ?? '-')
+        $('#hp_temperature').textContent = (p.temperature ?? '-')
+        $('#hp_humidity').textContent = (p.humidity ?? '-')
+        $('#hp_pressure').textContent = (p.pressure ?? '-')
+        $('#hp_salinity').textContent = (p.salinity ?? '-')
+        $('#hp_shipDetected').textContent = p.shipDetected ? '是' : (p.shipDetected===false ? '否' : '-')
+        $('#hp_shipType').textContent = (p.shipType || '-')
+        $('#hp_timestamp').textContent = p.timestamp ? new Date(p.timestamp).toLocaleString() : '-'
+      } catch (e) { /* ignore */ }
+    }
+    function startHp(){ if (hpTimer) return; fetchHydrophone(); hpTimer = setInterval(fetchHydrophone, Number($('#hp_interval').value||2000)); $('#hp_toggle').textContent = '停止刷新'; }
+    function stopHp(){ if (hpTimer) { clearInterval(hpTimer); hpTimer = null; } $('#hp_toggle').textContent = '开始刷新'; }
+    $('#hp_toggle').addEventListener('click', () => { hpTimer ? stopHp() : startHp(); });
+    $('#hp_interval').addEventListener('change', () => { if (hpTimer) { stopHp(); startHp(); } });
+    startHp();
+  </script>
+</body>
+</html>

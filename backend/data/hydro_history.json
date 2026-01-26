@@ -1,0 +1,34 @@
+[
+  {
+    "id": "mkv7ldsysrwo",
+    "name": "未命名",
+    "longitude": 1111,
+    "latitude": 1111,
+    "heading": 1111,
+    "temperature": 1111,
+    "humidity": 1111,
+    "pressure": 1111,
+    "salinity": 1111,
+    "shipDetected": true,
+    "shipType": "111",
+    "timestamp": "2026-01-26T13:34:23.266Z",
+    "createdAt": "2026-01-26T13:34:23.266Z",
+    "sentAt": null
+  },
+  {
+    "id": "mkv7lqmpvzm9",
+    "name": "未命名",
+    "longitude": 22222,
+    "latitude": 1111,
+    "heading": 1111,
+    "temperature": 1111,
+    "humidity": 1111,
+    "pressure": 1111,
+    "salinity": 1111,
+    "shipDetected": true,
+    "shipType": "111",
+    "timestamp": "2026-01-26T13:34:39.889Z",
+    "createdAt": "2026-01-26T13:34:39.889Z",
+    "sentAt": "2026-01-26T13:34:42.441Z"
+  }
+]

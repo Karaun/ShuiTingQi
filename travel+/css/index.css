@@ -1,0 +1,45 @@
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+#container {
+  width: 100%;
+  height: 100%
+}
+
+a {
+  cursor: pointer;
+}
+
+.input-card {
+  width: 150px;
+  top: 200px;
+  left: 10px;
+  bottom: auto;
+}
+
+
+
+#map-styles .input-item {
+  height: 2rem;
+
+}
+
+#map-styles .input-item span {
+  display: inline-block;
+  width: 4rem;
+
+}
+
+#map-styles .input-item .input-text {
+  color: #0288d1;
+  margin-left: 1rem;
+  margin-right: 0rem;
+  width: 6rem;
+
+}

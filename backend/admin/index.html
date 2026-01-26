@@ -1,0 +1,607 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>后台管理</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --panel: #ffffff;
+      --muted: #64748b;
+      --text: #0f172a;
+      --primary: #2563eb;
+      --danger: #dc2626;
+      --success: #16a34a;
+      --border: #e2e8f0;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: #f8fafc; color: var(--text);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Microsoft YaHei", sans-serif;
+    }
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 24px; border-bottom: 1px solid var(--border); background: #ffffff;
+      position: sticky; top: 0; z-index: 10;
+    }
+    header h1 { margin: 0; font-size: 18px; letter-spacing: .5px; }
+    .tabs { display: flex; gap: 10px; }
+    .tab { padding: 8px 14px; border: 1px solid var(--border); border-radius: 8px; color: var(--muted); cursor: pointer; background: #ffffff; }
+    .tab.active { color: var(--text); border-color: var(--primary); box-shadow: 0 0 0 2px rgba(37,99,235,.15) inset; }
+
+    main { padding: 20px 24px; }
+    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 18px; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+    .title { margin: 0 0 12px; font-size: 16px; }
+    .muted { color: var(--muted); font-size: 12px; }
+
+    .row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+    input, textarea, button, select { padding: 10px 12px; font-size: 14px; border-radius: 8px; border: 1px solid var(--border); background: #ffffff; color: var(--text); }
+    input, select { width: 240px; }
+    textarea { width: 520px; height: 110px; }
+    button { background: #e2e8f0; cursor: pointer; }
+    button.primary { background: var(--primary); border-color: #1d4ed8; color: white; }
+    button.danger { background: #fee2e2; border-color: #fecaca; color: #b91c1c; }
+    button:hover { filter: brightness(1.05); }
+
+    table { border-collapse: collapse; width: 100%; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: #ffffff; }
+    th, td { border-bottom: 1px solid var(--border); padding: 10px; font-size: 14px; vertical-align: top; }
+    th { text-align: left; background: #f1f5f9; color: #0f172a; }
+    tr:last-child td { border-bottom: none; }
+
+    .section { display: none; }
+    .section.active { display: block; }
+
+    /* 新增导出相关样式 */
+    .export-card { padding: 16px; border: 1px solid var(--border); border-radius: 8px; background: #f8fafc; }
+    .export-card h3 { margin: 0 0 10px; font-size: 14px; color: var(--text); }
+    .export-actions { display: flex; gap: 8px; }
+
+    .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #132343; color: var(--muted); margin-right: 6px; font-size: 12px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>后台管理</h1>
+    <nav class="tabs">
+      <div class="tab active" data-tab="pois">兴趣点管理</div>
+      <div class="tab" data-tab="routes">路线管理</div>
+      <div class="tab" data-tab="ops">操作日志</div>
+      <!-- [新增] 导出选项卡 -->
+      <div class="tab" data-tab="export">数据导出</div>
+      <div class="tab" data-tab="stats">访问统计</div>
+      <div class="tab" data-tab="hydro">水听器管理</div>
+    </nav>
+  </header>
+
+  <main>
+    <!-- 兴趣点管理 -->
+    <section id="pois" class="section active">
+      <div class="panel">
+        <h2 class="title">新增兴趣点</h2>
+        <div class="row">
+          <input id="poi_name" placeholder="名称" />
+          <input id="poi_lng" placeholder="经度 lng (120.38)" />
+          <input id="poi_lat" placeholder="纬度 lat (36.07)" />
+          <input id="poi_address" placeholder="地址 (可选)" />
+          <input id="poi_tags" placeholder="标签, 逗号分隔 (可选)" />
+          <button id="poi_create" class="primary">新增</button>
+        </div>
+        <div class="muted">提示：表格可直接编辑后保存；删除不可恢复。</div>
+      </div>
+
+      <div class="panel">
+        <h2 class="title">兴趣点列表</h2>
+        <table id="poi_tbl">
+          <thead>
+            <tr>
+              <th style="width: 220px;">名称</th>
+              <th style="width: 140px;">经度</th>
+              <th style="width: 140px;">纬度</th>
+              <th>地址</th>
+              <th style="width: 220px;">标签</th>
+              <th style="width: 160px;">操作</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 景点列表管理 -->
+    <section id="attractions" class="section">
+      <div class="panel">
+        <h2 class="title">新增景点</h2>
+        <div class="row">
+          <input id="attr_name" placeholder="名称" />
+          <input id="attr_lng" placeholder="经度 lng (120.38)" />
+          <input id="attr_lat" placeholder="纬度 lat (36.07)" />
+          <input id="attr_address" placeholder="地址 (可选)" />
+          <input id="attr_tags" placeholder="标签, 逗号分隔 (可选)" />
+          <input id="attr_desc" placeholder="简介 (可选)" />
+          <button id="attr_create" class="primary">新增</button>
+        </div>
+        <div class="muted">说明：景点用于“景点列表管理”，与兴趣点分开维护。</div>
+      </div>
+
+      <div class="panel">
+        <h2 class="title">景点列表</h2>
+        <table id="attr_tbl">
+          <thead>
+            <tr>
+              <th style="width: 220px;">名称</th>
+              <th style="width: 140px;">经度</th>
+              <th style="width: 140px;">纬度</th>
+              <th>地址</th>
+              <th>标签</th>
+              <th>简介</th>
+              <th style="width: 160px;">操作</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 路线管理 -->
+    <section id="routes" class="section">
+      <div class="panel">
+        <h2 class="title">新增路线</h2>
+        <div class="row">
+          <input id="route_name" placeholder="路线名称" />
+          <textarea id="route_coords" placeholder='经纬度数组 JSON，如: [[120.38,36.07],[120.40,36.08]]'></textarea>
+          <button id="route_create" class="primary">新增</button>
+        </div>
+        <div class="muted">说明：coords 为经纬度数组，形如 [[lng,lat], ...] 。</div>
+      </div>
+
+      <div class="panel">
+        <h2 class="title">路线列表</h2>
+        <table id="route_tbl">
+          <thead>
+            <tr>
+              <th style="width: 240px;">名称</th>
+              <th>坐标数组 (JSON)</th>
+              <th style="width: 200px;">创建时间</th>
+              <th style="width: 160px;">操作</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 操作日志 -->
+    <section id="ops" class="section">
+      <div class="panel">
+        <h2 class="title">最近操作日志</h2>
+        <table id="log_tbl">
+          <thead>
+            <tr>
+              <th style="width:120px;">ID</th>
+              <th style="width:140px;">类型</th>
+              <th>详情</th>
+              <th style="width:220px;">时间</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- [新增] 数据导出 -->
+    <section id="export" class="section">
+      <div class="panel">
+        <h2 class="title">数据导出中心</h2>
+        <div class="muted" style="margin-bottom:16px;">选择数据类型和格式进行下载。</div>
+        
+        <div class="grid">
+          <!-- 导出 POI -->
+          <div class="export-card">
+            <h3>兴趣点 (POIs)</h3>
+            <div class="export-actions">
+              <button onclick="handleExport('pois', 'json')">JSON</button>
+              <button onclick="handleExport('pois', 'csv')">CSV</button>
+            </div>
+          </div>
+          
+          <!-- 导出 Routes -->
+          <div class="export-card">
+            <h3>路线 (Routes)</h3>
+            <div class="export-actions">
+              <button onclick="handleExport('routes', 'json')">JSON</button>
+              <button onclick="handleExport('routes', 'csv')">CSV</button>
+            </div>
+          </div>
+
+          <!-- 导出 Attractions -->
+          <div class="export-card">
+            <h3>景点 (Attractions)</h3>
+            <div class="export-actions">
+              <button onclick="handleExport('attractions', 'json')">JSON</button>
+              <button onclick="handleExport('attractions', 'csv')">CSV</button>
+            </div>
+          </div>
+
+          <!-- 导出 Logs -->
+          <div class="export-card">
+            <h3>操作日志 (Logs)</h3>
+            <div class="export-actions">
+              <button onclick="handleExport('logs', 'json')">JSON</button>
+              <button onclick="handleExport('logs', 'csv')">CSV</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 访问统计 -->
+    <section id="stats" class="section">
+      <div class="panel">
+        <h2 class="title">请求计数</h2>
+        <table id="stats_tbl">
+          <thead>
+            <tr>
+              <th>Method + Path</th>
+              <th style="width:160px;">Count</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <div class="muted" style="margin-top:8px;">说明：统计为后端本地计数，仅用于运维观察。</div>
+      </div>
+    </section>
+
+    <!-- 水听器管理 -->
+    <section id="hydro" class="section">
+      <div class="panel">
+        <h2 class="title">新增/编辑 水听器数据</h2>
+        <div class="row">
+          <input id="hp_longitude_in" placeholder="经度 (number)" />
+          <input id="hp_latitude_in" placeholder="纬度 (number)" />
+          <input id="hp_heading_in" placeholder="航向 (number)" />
+          <input id="hp_temperature_in" placeholder="温度 (°C)" />
+          <input id="hp_humidity_in" placeholder="湿度 (%)" />
+          <input id="hp_pressure_in" placeholder="气压 (hPa)" />
+          <input id="hp_salinity_in" placeholder="盐度 (PSU)" />
+          <select id="hp_shipDetected_in">
+            <option value="">是否识别到船只</option>
+            <option value="true">是</option>
+            <option value="false">否</option>
+          </select>
+          <input id="hp_shipType_in" placeholder="船只类型 (文本)" />
+          <input id="hp_timestamp_in" placeholder="时间(ISO, 可留空)" />
+        </div>
+        <div class="row" style="margin-top:10px;">
+          <button id="hp_add_history" class="primary">添加到历史</button>
+          <button id="hp_send_now" class="primary">立即发送为当前数据</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2 class="title">历史记录</h2>
+        <div class="row" style="margin-bottom:8px;">
+          <button id="hp_refresh" class="primary">刷新列表</button>
+        </div>
+        <table id="hydro_tbl">
+          <thead>
+            <tr>
+              <th style="width:180px;">时间</th>
+              <th>经纬度</th>
+              <th>航向/温/湿/压/盐</th>
+              <th>船只</th>
+              <th style="width:220px;">操作</th>
+            </tr>
+          </thead>
+          <tbody id="hp_tbody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // Tabs
+    document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+      document.querySelectorAll('.section').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      document.getElementById(t.dataset.tab).classList.add('active');
+    }));
+
+    // Helpers
+    const $ = sel => document.querySelector(sel);
+    function escapeHtml(str){ return String(str).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[s])); }
+
+    // APIs
+    const api = {
+      // POIs
+      poiList: async () => (await fetch('/api/pois')).json(),
+      poiCreate: async (p) => (await fetch('/api/pois', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(p) })).json(),
+      poiUpdate: async (id, p) => (await fetch('/api/pois/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(p) })).json(),
+      poiDelete: async (id) => fetch('/api/pois/' + id, { method: 'DELETE' }),
+      // Routes
+      routeList: async () => (await fetch('/api/routes')).json(),
+      routeCreate: async (p) => (await fetch('/api/routes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(p) })).json(),
+      routeUpdate: async (id, p) => (await fetch('/api/routes/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(p) })).json(),
+      routeDelete: async (id) => fetch('/api/routes/' + id, { method: 'DELETE' }),
+      // Attractions
+      attrList: async () => (await fetch('/api/attractions')).json(),
+      attrCreate: async (p) => (await fetch('/api/attractions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(p) })).json(),
+      attrUpdate: async (id, p) => (await fetch('/api/attractions/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(p) })).json(),
+      attrDelete: async (id) => fetch('/api/attractions/' + id, { method: 'DELETE' }),
+      // Ops
+      logs: async () => (await fetch('/api/logs')).json(),
+      stats: async () => (await fetch('/api/stats')).json(),
+    };
+
+    // -------- POIs --------
+    const poiTbody = $('#poi_tbl tbody');
+    function poiRow(item){
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><input value="${escapeHtml(item.name)}" data-k="name" /></td>
+        <td><input value="${item.lng}" data-k="lng" /></td>
+        <td><input value="${item.lat}" data-k="lat" /></td>
+        <td><input value="${escapeHtml(item.address || '')}" data-k="address" /></td>
+        <td><input value="${escapeHtml((item.tags||[]).join(','))}" data-k="tags" /></td>
+        <td>
+          <button data-act="save" class="primary">保存</button>
+          <button data-act="del" class="danger" style="margin-left:8px;">删除</button>
+        </td>`;
+      tr.dataset.id = item.id; return tr;
+    }
+    async function refreshPOIs(){
+      const list = await api.poiList();
+      poiTbody.innerHTML=''; list.forEach(i => poiTbody.appendChild(poiRow(i)));
+    }
+    $('#poi_create').addEventListener('click', async () => {
+      const name = $('#poi_name').value.trim();
+      const lng = Number($('#poi_lng').value); const lat = Number($('#poi_lat').value);
+      const address = $('#poi_address').value.trim();
+      const tags = $('#poi_tags').value.trim() ? $('#poi_tags').value.trim().split(',').map(s=>s.trim()).filter(Boolean) : [];
+      if (!name || Number.isNaN(lng) || Number.isNaN(lat)) { alert('请填写名称与合法经纬度'); return; }
+      await api.poiCreate({ name, lng, lat, address, tags });
+      $('#poi_name').value=''; $('#poi_lng').value=''; $('#poi_lat').value=''; $('#poi_address').value=''; $('#poi_tags').value='';
+      await refreshPOIs();
+    });
+    poiTbody.addEventListener('click', async (e) => {
+      if (e.target.tagName !== 'BUTTON') return;
+      const tr = e.target.closest('tr'); const id = tr.dataset.id;
+      if (e.target.dataset.act === 'del') { if (confirm('确认删除该兴趣点？')) { await api.poiDelete(id); await refreshPOIs(); } return; }
+      if (e.target.dataset.act === 'save') {
+        const payload = {}; tr.querySelectorAll('input[data-k]').forEach(inp => {
+          const k = inp.dataset.k; let v = inp.value;
+          if (k==='lng'||k==='lat') v = Number(v);
+          if (k==='tags') v = v.trim()? v.split(',').map(s=>s.trim()).filter(Boolean) : [];
+          payload[k] = v;
+        });
+        if (!payload.name || Number.isNaN(payload.lng) || Number.isNaN(payload.lat)) { alert('请填写合法名称/经纬度'); return; }
+        await api.poiUpdate(id, payload); await refreshPOIs();
+      }
+    });
+
+    // -------- Routes --------
+    const routeTbody = $('#route_tbl tbody');
+    function routeRow(item){
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><input value="${escapeHtml(item.name)}" data-k="name" /></td>
+        <td><textarea data-k="coords">${escapeHtml(JSON.stringify(item.coords))}</textarea></td>
+        <td>${new Date(item.createdAt).toLocaleString()}</td>
+        <td>
+          <button data-act="save" class="primary">保存</button>
+          <button data-act="del" class="danger" style="margin-left:8px;">删除</button>
+        </td>`;
+      tr.dataset.id = item.id; return tr;
+    }
+    async function refreshRoutes(){
+      const list = await api.routeList(); routeTbody.innerHTML=''; list.forEach(i => routeTbody.appendChild(routeRow(i)));
+    }
+    $('#route_create').addEventListener('click', async () => {
+      const name = $('#route_name').value.trim(); let coords;
+      try { coords = JSON.parse($('#route_coords').value); } catch { alert('请填写合法 JSON 坐标数组'); return; }
+      if (!name || !Array.isArray(coords) || coords.length === 0) { alert('请填写名称与坐标数组'); return; }
+      await api.routeCreate({ name, coords });
+      $('#route_name').value=''; $('#route_coords').value='';
+      await refreshRoutes();
+    });
+    routeTbody.addEventListener('click', async (e) => {
+      if (e.target.tagName !== 'BUTTON') return; const tr = e.target.closest('tr'); const id = tr.dataset.id;
+      if (e.target.dataset.act === 'del') { if (confirm('确认删除该路线？')) { await api.routeDelete(id); await refreshRoutes(); } return; }
+      if (e.target.dataset.act === 'save') {
+        const name = tr.querySelector('input[data-k="name"]').value.trim(); let coords;
+        try { coords = JSON.parse(tr.querySelector('textarea[data-k="coords"]').value); } catch { alert('请填写合法 JSON 坐标数组'); return; }
+        if (!name || !Array.isArray(coords) || coords.length === 0) { alert('请填写名称与坐标数组'); return; }
+        await api.routeUpdate(id, { name, coords }); await refreshRoutes();
+      }
+    });
+
+    // -------- Logs & Stats --------
+    async function refreshLogs(){
+      const tbody = document.querySelector('#log_tbl tbody');
+      const list = await api.logs(); tbody.innerHTML='';
+      list.forEach(log => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${log.id}</td><td>${escapeHtml(log.type)}</td><td><pre style="white-space:pre-wrap;margin:0">${escapeHtml(JSON.stringify(log.detail))}</pre></td><td>${new Date(log.ts).toLocaleString()}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+    async function refreshStats(){
+      const tbody = document.querySelector('#stats_tbl tbody');
+      const map = await api.stats(); tbody.innerHTML='';
+      Object.keys(map).sort((a,b)=> map[b]-map[a]).forEach(k => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${escapeHtml(k)}</td><td>${map[k]}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // -------- Attractions --------
+    const attrTbody = document.querySelector('#attr_tbl tbody');
+    function attrRow(item){
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><input value="${escapeHtml(item.name||'')}" data-k="name" /></td>
+        <td><input value="${item.lng||''}" data-k="lng" /></td>
+        <td><input value="${item.lat||''}" data-k="lat" /></td>
+        <td><input value="${escapeHtml(item.address||'')}" data-k="address" /></td>
+        <td><input value="${escapeHtml((item.tags||[]).join(','))}" data-k="tags" /></td>
+        <td><input value="${escapeHtml(item.desc||'')}" data-k="desc" /></td>
+        <td>
+          <button data-act="save" class="primary">保存</button>
+          <button data-act="del" class="danger" style="margin-left:8px;">删除</button>
+        </td>`;
+      tr.dataset.id = item.id; return tr;
+    }
+    async function refreshAttrs(){ const list = await api.attrList(); attrTbody.innerHTML=''; list.forEach(i=>attrTbody.appendChild(attrRow(i))); }
+    document.querySelector('#attr_create').addEventListener('click', async () => {
+      const name = document.querySelector('#attr_name').value.trim();
+      const lng = Number(document.querySelector('#attr_lng').value);
+      const lat = Number(document.querySelector('#attr_lat').value);
+      const address = document.querySelector('#attr_address').value.trim();
+      const tags = document.querySelector('#attr_tags').value.trim()? document.querySelector('#attr_tags').value.trim().split(',').map(s=>s.trim()).filter(Boolean): [];
+      const desc = document.querySelector('#attr_desc').value.trim();
+      if (!name) { alert('请填写名称'); return; }
+      await api.attrCreate({ name, lng, lat, address, tags, desc });
+      document.querySelector('#attr_name').value=''; document.querySelector('#attr_lng').value=''; document.querySelector('#attr_lat').value=''; document.querySelector('#attr_address').value=''; document.querySelector('#attr_tags').value=''; document.querySelector('#attr_desc').value='';
+      await refreshAttrs();
+    });
+    attrTbody.addEventListener('click', async (e)=>{
+      if (e.target.tagName !== 'BUTTON') return; const tr=e.target.closest('tr'); const id=tr.dataset.id;
+      if (e.target.dataset.act==='del'){ if(confirm('确认删除该景点？')){ await api.attrDelete(id); await refreshAttrs(); } return; }
+      if (e.target.dataset.act==='save'){
+        const payload = {}; tr.querySelectorAll('input[data-k]').forEach(inp=>{
+          const k=inp.dataset.k; let v=inp.value; if(k==='lng'||k==='lat') v=Number(v); if(k==='tags') v=v.trim()? v.split(',').map(s=>s.trim()).filter(Boolean):[]; payload[k]=v;
+        });
+        if (!payload.name) { alert('请填写名称'); return; }
+        await api.attrUpdate(id, payload); await refreshAttrs();
+      }
+    });
+
+    // -------- Data Export Logic --------
+    function downloadFile(content, filename, contentType) {
+      const a = document.createElement('a');
+      const blob = new Blob([content], { type: contentType });
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    // Convert Array of Objects to CSV string
+    function toCSV(data) {
+      if (!data || !data.length) return '';
+      const headers = Object.keys(data[0]);
+      const csvRows = [headers.join(',')];
+      
+      for (const row of data) {
+        const values = headers.map(header => {
+          let val = row[header];
+          // 如果是对象/数组（如 coords, tags），转为 JSON 字符串
+          if (typeof val === 'object' && val !== null) {
+            val = JSON.stringify(val);
+          }
+          // 处理包含逗号、双引号、换行的字符串
+          val = String(val !== undefined ? val : '');
+          if (val.includes(',') || val.includes('"') || val.includes('\n')) {
+            val = `"${val.replace(/"/g, '""')}"`;
+          }
+          return val;
+        });
+        csvRows.push(values.join(','));
+      }
+      return csvRows.join('\n');
+    }
+
+    // -------- Hydrophone (水听器管理) --------
+    function hpReadForm(){
+      const v = (id) => document.getElementById(id).value;
+      const num = (x) => (x===''?null:Number(x));
+      const sd = v('hp_shipDetected_in');
+      return {
+        longitude: Number(v('hp_longitude_in')),
+        latitude: Number(v('hp_latitude_in')),
+        heading: num(v('hp_heading_in')),
+        temperature: num(v('hp_temperature_in')),
+        humidity: num(v('hp_humidity_in')),
+        pressure: num(v('hp_pressure_in')),
+        salinity: num(v('hp_salinity_in')),
+        shipDetected: sd===''? null : (sd==='true'),
+        shipType: v('hp_shipType_in').trim(),
+        timestamp: v('hp_timestamp_in').trim() || null
+      };
+    }
+    function hpValid(p){ return typeof p.longitude==='number' && !Number.isNaN(p.longitude) && typeof p.latitude==='number' && !Number.isNaN(p.latitude); }
+    function hpRowHTML(it){
+      const hv = (x)=> (x===null||x===undefined||x==='')?'-':x;
+      const shipStr = (it.shipDetected? '是' : '否') + (it.shipType? (' / ' + it.shipType) : '');
+      return `
+        <tr data-id="${it.id}">
+          <td>${new Date(it.createdAt||it.timestamp||Date.now()).toLocaleString()}</td>
+          <td>${it.longitude}, ${it.latitude}</td>
+          <td>${hv(it.heading)} / ${hv(it.temperature)} / ${hv(it.humidity)} / ${hv(it.pressure)} / ${hv(it.salinity)}</td>
+          <td>${hv(shipStr)}</td>
+          <td>
+            <button data-act="send" class="primary">发送</button>
+            <button data-act="del" class="danger" style="margin-left:8px;">删除</button>
+          </td>
+        </tr>`;
+    }
+    async function refreshHydro(){
+      try{
+        const res = await fetch('/api/hydro/history');
+        const list = await res.json();
+        const tbody = document.getElementById('hp_tbody');
+        if (tbody) tbody.innerHTML = (list||[]).map(hpRowHTML).join('');
+      }catch(e){}
+    }
+    document.getElementById('hp_add_history')?.addEventListener('click', async ()=>{
+      const p = hpReadForm(); if (!hpValid(p)) { alert('请填写合法经纬度'); return; }
+      try{ const r = await fetch('/api/hydro/history', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(p) }); if (!r.ok) throw new Error(); await refreshHydro(); alert('已添加到历史'); }catch(e){ alert('添加失败'); }
+    });
+    document.getElementById('hp_send_now')?.addEventListener('click', async ()=>{
+      const p = hpReadForm(); if (!hpValid(p)) { alert('请填写合法经纬度'); return; }
+      try{ const r = await fetch('/api/hydrophone/update', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(p) }); if (!r.ok) throw new Error(); alert('已发送为当前数据'); }catch(e){ alert('发送失败'); }
+    });
+    document.getElementById('hp_refresh')?.addEventListener('click', refreshHydro);
+    document.getElementById('hp_tbody')?.addEventListener('click', async (e)=>{
+      if (e.target.tagName !== 'BUTTON') return;
+      const tr = e.target.closest('tr'); const id = tr && tr.dataset.id; if (!id) return;
+      if (e.target.dataset.act === 'send') { try{ const r = await fetch('/api/hydro/history/' + id + '/send', { method:'POST' }); if (!r.ok) throw new Error(); alert('已发送'); }catch(e){ alert('发送失败'); } }
+      if (e.target.dataset.act === 'del') { if (!confirm('确认删除该记录？')) return; try{ const r = await fetch('/api/hydro/history/' + id, { method:'DELETE' }); if (r.status===204) tr.remove(); else alert('删除失败'); }catch(e){ alert('删除失败'); } }
+    });
+    async function handleExport(type, format) {
+      let data = [];
+      let filename = `${type}_${new Date().toISOString().slice(0,10)}`;
+      
+      try {
+        switch(type) {
+          case 'pois': data = await api.poiList(); break;
+          case 'routes': data = await api.routeList(); break;
+          case 'attractions': data = await api.attrList(); break;
+          case 'logs': data = await api.logs(); break;
+        }
+
+        if (data.length === 0) {
+          alert('当前没有数据可导出');
+          return;
+        }
+
+        if (format === 'json') {
+          downloadFile(JSON.stringify(data, null, 2), filename + '.json', 'application/json');
+        } else if (format === 'csv') {
+          downloadFile(toCSV(data), filename + '.csv', 'text/csv');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('导出失败: ' + err.message);
+      }
+    }
+
+    // Initial load when sections visible
+    refreshPOIs(); refreshRoutes(); refreshAttrs(); refreshLogs(); refreshStats(); refreshHydro();
+  </script>
+</body>
+</html>

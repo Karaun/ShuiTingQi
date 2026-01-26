@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>webgis</title>
+    <!-- 引入资源 -->
+    <!-- 引入css相关的资源 -->
+    <link
+      rel="stylesheet"
+      href="https://a.amap.com/jsapi_demos/static/demo-center/css/demo-center.css"
+    />
+    <link rel="stylesheet" href="./css/index.css" />
+    <!-- 引入 layui.css -->
+    <link href="./layui/css/layui.css" rel="stylesheet" />
+
+    <!-- 引入 layui.js -->
+    <script src="./layui/layui.js"></script>
+    <!-- 引入js相关的资源 -->
+    <script src="https://cache.amap.com/lbs/static/es5.min.js"></script>
+    <script type="text/javascript">
+      window._AMapSecurityConfig = {
+        securityJsCode: "3e7f8302fb7257062e510caa8e839c2f",
+      };
+    </script>
+    <script src="https://webapi.amap.com/maps?v=2.0&key=2811e6b7060883d17411cfd1edd2dd0e&plugin=AMap.Scale,AMap.HawkEye,AMap.ToolBar,AMap.ControlBar,AMap.Driving,AMap.Walking,AMap.Transfer"></script>
+  </head>
+
+  <body>
+    <ul class="layui-nav">
+      <li class="layui-nav-item">
+        <a onclick="startAnimation()">路径规划模拟动画</a>
+      </li>
+      <li class="layui-nav-item">
+        <a onclick="startAnimation2()">开始选择途径点</a>
+      </li>
+      <li class="layui-nav-item">
+        <a onclick="endAnimation2()">结束选择途径点</a>
+      </li>
+      <li class="layui-nav-item">
+        <a onclick="weather()">天气预报</a>
+      </li>
+      <li class="layui-nav-item">
+        &emsp;地点搜索&emsp;<input style="height: 20px" id="tipinput" />
+      </li>
+      <li class="layui-nav-item">
+        <a onclick="saveRoute()">保存路线</a>
+      </li>
+      <li class="layui-nav-item">
+        <a onclick="viewRoutes()">查看路线</a>
+      </li>
+      <li class="layui-nav-item">
+        <a onclick="loadManagedPOIs()">加载兴趣点</a>
+      </li>
+      <li class="layui-nav-item">
+        <a onclick="chooseAndReplayRoute()">复现保存路线</a>
+      </li>
+      <li class="layui-nav-item">
+        <a onclick="openHydrophone()">水听器</a>
+      </li>
+    </ul>
+
+    <div style="height: 91.5%" id="container"></div>
+
+    <div
+      style="
+        z-index: 999;
+        position: fixed;
+        top: 175px;
+        width: 300px;
+        background-color: white;
+        left: 10px;
+      "
+    >
+      <h4 style="margin: 10px">地点列表</h4>
+      <div id="panel2"></div>
+    </div>
+    <div id="panel"></div>
+    <script>
+      
+      var scale = new AMap.Scale({
+          visible: false,
+        }),
+        toolBar = new AMap.ToolBar({
+          visible: false,
+          position: {
+            top: "200px",
+            left: "40px",
+          },
+        }),
+        controlBar = new AMap.ControlBar({
+          visible: false,
+          position: {
+            top: "150px",
+            right: "10px",
+          },
+        }),
+        overView = new AMap.HawkEye({
+          visible: true,
+        }),
+        map = new AMap.Map("container", {
+          //青岛市
+          center: [106.551643, 29.562849],
+          zoom: 12,
+          viewMode: "3D",
+          pitch: 45,
+          resizeEnable: true, //是否监控地图容器尺寸变化
+        });
+
+      var radios = document.querySelectorAll("#map-styles input");
+      radios.forEach(function (ratio) {
+        ratio.onclick = setMapStyle;
+      });
+
+    
+      function weather() {
+        AMap.plugin("AMap.Weather", function () {
+          //创建天气查询实例
+          var weather = new AMap.Weather();
+          //执行实时天气信息查询
+          weather.getLive("青岛市", function (err, data) {
+            if (!err) {
+              console.log(data);
+              layer.open({
+                title: "天气预报",
+                content:
+                  "城市：" +
+                  data.city +
+                  "<br/>天气：" +
+                  data.weather +
+                  "<br/>温度：" +
+                  data.temperature +
+                  "℃<br/>风向：" +
+                  data.windDirection +
+                  "<br/>风力：" +
+                  data.windPower +
+                  "级<br/>湿度：" +
+                  data.humidity +
+                  "<br/>发布时间：" +
+                  data.reportTime,
+              });
+            }
+          });
+        });
+      }
+
+      AMap.plugin(
+        ["AMap.ControlBar", "AMap.ToolBar", "AMap.Scale", "AMap.MapType"],
+        function () {
+          //引⼊
+          map.addControl(new AMap.ControlBar());
+          map.addControl(new AMap.ToolBar());
+          map.addControl(new AMap.Scale());
+          map.addControl(new AMap.MapType());
+        }
+      );
+
+      var traffic = new AMap.TileLayer.Traffic({
+        autoRefresh: true,
+        interval: 180,
+      });
+
+      function showTraffic() {
+        map.add(traffic);
+      }
+
+      function hideTraffic() {
+        map.remove(traffic);
+      }
+
+      map.addControl(scale);
+      map.addControl(toolBar);
+      map.addControl(controlBar);
+      map.addControl(overView);
+
+      function toggleScale(checkbox) {
+        if (checkbox.checked) {
+          scale.show();
+        } else {
+          scale.hide();
+        }
+      }
+
+      function toggleToolBar(checkbox) {
+        if (checkbox.checked) {
+          showToolBar();
+        } else {
+          hideToolBar();
+        }
+      }
+
+      function toggleControlBar(checkbox) {
+        if (checkbox.checked) {
+          document.getElementById("controlBar").checked = true;
+          controlBar.show();
+        } else {
+          document.getElementById("controlBar").checked = false;
+          controlBar.hide();
+        }
+      }
+
+      function toggleOverViewShow(checkbox) {
+        if (checkbox.checked) {
+          overView.show();
+        } else {
+          overView.hide();
+        }
+      }
+
+      function showToolBar() {
+        document.getElementById("toolbar").checked = true;
+        toolBar.show();
+      }
+
+      function hideToolBar() {
+        document.getElementById("toolbar").checked = false;
+        toolBar.hide();
+      }
+
+      function dk(e) {
+        let marker = new AMap.Marker({
+          icon: "https://a.amap.com/jsapi_demos/static/demo-center/icons/poi-marker-default.png",
+          position: [e.lnglat.lng, e.lnglat.lat],
+          offset: new AMap.Pixel(-26.5, -62),
+        });
+        marker.setMap(map);
+        if (localStorage.getItem("marker")) {
+        } else {
+        }
+      }
+      //
+      function click_start(e) {
+        layer.msg("请在地图上点击结束点");
+
+        console.log(e);
+        let marker = new AMap.Marker({
+          icon: "https://a.amap.com/jsapi_demos/static/demo-center/icons/poi-marker-default.png",
+          position: [e.lnglat.lng, e.lnglat.lat],
+          offset: new AMap.Pixel(-26.5, -62), //设置图标偏移量
+        });
+        marker.setMap(map);
+        start = [e.lnglat.lng, e.lnglat.lat];
+        map.off("click", click_start);
+        map.on("click", click_end);
+      }
+      let ways = [];
+
+      function click_start2(e) {
+        console.log(e);
+        let marker = new AMap.Marker({
+          icon: "https://a.amap.com/jsapi_demos/static/demo-center/icons/poi-marker-default.png",
+          position: [e.lnglat.lng, e.lnglat.lat],
+          offset: new AMap.Pixel(-26.5, -62),
+        });
+        marker.setMap(map);
+        ways.push([e.lnglat.lng, e.lnglat.lat]);
+      }
+
+      function click_end(e) {
+        console.log(e);
+        let marker = new AMap.Marker({
+          icon: "https://a.amap.com/jsapi_demos/static/demo-center/icons/poi-marker-default.png",
+          position: [e.lnglat.lng, e.lnglat.lat],
+          offset: new AMap.Pixel(-26.5, -62),
+        });
+        marker.setMap(map);
+        end = [e.lnglat.lng, e.lnglat.lat];
+        map.off("click", click_end);
+        console.log(start, end);
+        layer.prompt(
+          {
+            title: "请输入出行方式(步行，公交，驾车)",
+          },
+          function (value, index, elem) {
+            if (value == "步行") {
+              layer.close(index);
+
+              AMap.plugin("AMap.Walking", function () {
+                var walking = new AMap.Walking({
+                  // 驾车路线规划策略，AMap.DrivingPolicy.LEAST_TIME是最快捷模式
+                  panel: "panel",
+                  map: map,
+                });
+
+                walking.search(start, end, function (status, result) {
+                  console.log(result);
+                  let arr = [];
+                  for (let i in result.routes[0].steps) {
+                    let path = result.routes[0].steps[i].path;
+                    arr = arr.concat(path.map((v) => [v.lng, v.lat]));
+                  }
+                  // JSAPI2.0 使用覆盖物动画必须先加载动画插件
+                  AMap.plugin("AMap.MoveAnimation", function () {
+                    var marker,
+                      lineArr = arr;
+                    lastPathCoords = lineArr;
+                    marker = new AMap.Marker({
+                      map: map,
+                      position: arr[0],
+                      icon: "./img/walk.png",
+                      offset: new AMap.Pixel(-13, -26),
+                    });
+
+                    // 绘制轨迹
+                    var polyline = new AMap.Polyline({
+                      map: map,
+                      path: lineArr,
+                      showDir: true,
+                      strokeColor: "#28F", //线颜色
+                      // strokeOpacity: 1,     //线透明度
+                      strokeWeight: 6, //线宽
+                      // strokeStyle: "solid"  //线样式
+                    });
+
+                    var passedPolyline = new AMap.Polyline({
+                      map: map,
+                      strokeColor: "#AF5", //线颜色
+                      strokeWeight: 6, //线宽
+                    });
+
+                    marker.on("moving", function (e) {
+                      passedPolyline.setPath(e.passedPath);
+                      map.setCenter(e.target.getPosition(), true);
+                    });
+
+                    marker.moveAlong(lineArr, {
+                      // 每一段的时长
+                      duration: 500, //可根据实际采集时间间隔设置
+                      // JSAPI2.0 是否延道路自动设置角度在 moveAlong 里设置
+                      autoRotation: true,
+                    });
+                  });
+                });
+              });
+            } else if (value == "公交") {
+              layer.close(index);
+
+              AMap.plugin("AMap.Transfer", function () {
+                var transfer = new AMap.Transfer({
+                  // 驾车路线规划策略，AMap.DrivingPolicy.LEAST_TIME是最快捷模式
+                  panel: "panel",
+                  map: map,
+                  city: "青岛市",
+                });
+
+                transfer.search(start, end, function (status, result) {
+                  console.log(result);
+                  if (result.info == "NO_DATA") {
+                    layer.msg("NO_DATA");
+                    return;
+                  }
+                  let arr = [];
+                  for (let i in result.plans) {
+                    let path = result.plans[i].path;
+
+                    arr = arr.concat(path.map((v) => [v.lng, v.lat]));
+                  }
+
+                  // JSAPI2.0 使用覆盖物动画必须先加载动画插件
+                  AMap.plugin("AMap.MoveAnimation", function () {
+                    var marker,
+                      lineArr = arr;
+                    lastPathCoords = lineArr;
+                    marker = new AMap.Marker({
+                      map: map,
+                      position: arr[0],
+                      icon: "./img/bus.png",
+                      offset: new AMap.Pixel(-13, -26),
+                    });
+
+                    // 绘制轨迹
+                    var polyline = new AMap.Polyline({
+                      map: map,
+                      path: lineArr,
+                      showDir: true,
+                      strokeColor: "#28F", //线颜色
+                      // strokeOpacity: 1,     //线透明度
+                      strokeWeight: 6, //线宽
+                      // strokeStyle: "solid"  //线样式
+                    });
+
+                    var passedPolyline = new AMap.Polyline({
+                      map: map,
+                      strokeColor: "#AF5", //线颜色
+                      strokeWeight: 6, //线宽
+                    });
+
+                    marker.on("moving", function (e) {
+                      passedPolyline.setPath(e.passedPath);
+                      map.setCenter(e.target.getPosition(), true);
+                    });
+
+                    marker.moveAlong(lineArr, {
+                      // 每一段的时长
+                      duration: 500, //可根据实际采集时间间隔设置
+                      // JSAPI2.0 是否延道路自动设置角度在 moveAlong 里设置
+                      autoRotation: true,
+                    });
+                  });
+                });
+              });
+            } else if (value == "驾车") {
+              layer.close(index);
+
+              AMap.plugin("AMap.Driving", function () {
+                var transfer = new AMap.Driving({
+                  // 驾车路线规划策略，AMap.DrivingPolicy.LEAST_TIME是最快捷模式
+                  panel: "panel",
+                  map: map,
+                  city: "青岛市",
+                });
+
+                transfer.search(start, end, function (status, result) {
+                  console.log(result);
+                  let arr = [];
+                  for (let i in result.routes[0].steps) {
+                    let path = result.routes[0].steps[i].path;
+                    arr = arr.concat(path.map((v) => [v.lng, v.lat]));
+                  }
+                  // JSAPI2.0 使用覆盖物动画必须先加载动画插件
+                  AMap.plugin("AMap.MoveAnimation", function () {
+                    var marker,
+                      lineArr = arr;
+                    lastPathCoords = lineArr;
+                    marker = new AMap.Marker({
+                      map: map,
+                      position: arr[0],
+                      icon: "https://a.amap.com/jsapi_demos/static/demo-center-v2/car.png",
+                      offset: new AMap.Pixel(-13, -26),
+                    });
+
+                    // 绘制轨迹
+                    var polyline = new AMap.Polyline({
+                      map: map,
+                      path: lineArr,
+                      showDir: true,
+                      strokeColor: "#28F", //线颜色
+                      // strokeOpacity: 1,     //线透明度
+                      strokeWeight: 6, //线宽
+                      // strokeStyle: "solid"  //线样式
+                    });
+
+                    var passedPolyline = new AMap.Polyline({
+                      map: map,
+                      strokeColor: "#AF5", //线颜色
+                      strokeWeight: 6, //线宽
+                    });
+
+                    marker.on("moving", function (e) {
+                      passedPolyline.setPath(e.passedPath);
+                      map.setCenter(e.target.getPosition(), true);
+                    });
+
+                    marker.moveAlong(lineArr, {
+                      // 每一段的时长
+                      duration: 500, //可根据实际采集时间间隔设置
+                      // JSAPI2.0 是否延道路自动设置角度在 moveAlong 里设置
+                      autoRotation: true,
+                    });
+                  });
+                });
+              });
+            } else {
+              layer.msg("输入错误");
+            }
+          }
+        );
+      }
+      var start = [];
+      var end = [];
+      var lastPathCoords = [];
+
+      function startAnimation() {
+        map.off("click", dk);
+        layer.msg("请在地图上点击出发点");
+        map.on("click", click_start);
+      }
+
+      function startAnimation2() {
+        map.off("click", dk);
+        layer.msg("请在地图上点击出发点和途径点");
+        map.on("click", click_start2);
+      }
+
+      function endAnimation2() {
+        map.off("click", click_start2);
+        //构造路线导航类
+        var driving = new AMap.Driving({
+          map: map,
+          panel: "panel",
+        });
+        // 根据起终点经纬度规划驾车导航路线
+        driving.search(
+          ways[0],
+          ways[ways.length - 1],
+          {
+            waypoints: ways.filter((item, index) => {
+              return index !== 0 && index !== ways.length - 1;
+            }),
+          },
+          function (status, result) {
+            if (status === "complete") {
+              layer.msg("绘制驾车路线完成");
+              ways = [];
+              try {
+                var arr = [];
+                for (let i in result.routes[0].steps) {
+                  let path = result.routes[0].steps[i].path;
+                  arr = arr.concat(path.map((v) => [v.lng, v.lat]));
+                }
+                lastPathCoords = arr;
+              } catch (e) {}
+            } else {
+              layer.msg("获取驾车数据失败：" + result);
+            }
+          }
+        );
+      }
+
+      async function saveRoute() {
+        if (!lastPathCoords || lastPathCoords.length === 0) {
+          layer.msg("暂无可保存的路线，请先规划路线");
+          return;
+        }
+        layer.prompt({ title: "输入路线名称" }, async function (value, index) {
+          layer.close(index);
+          try {
+            const res = await fetch('/api/routes', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ name: value || '未命名路线', coords: lastPathCoords })
+            });
+            if (!res.ok) throw new Error('保存失败');
+            const data = await res.json();
+            layer.msg("已保存：" + data.name);
+          } catch (err) {
+            layer.msg("保存失败");
+          }
+        });
+      }
+
+      async function viewRoutes() {
+        try {
+          const res = await fetch('/api/routes');
+          const list = await res.json();
+          if (!Array.isArray(list) || list.length === 0) {
+            layer.msg("暂无已保存路线");
+            return;
+          }
+          var html = list.map(function(it){ return (it.name + ' (' + new Date(it.createdAt).toLocaleString() + ')'); }).join('<br/>');
+          layer.open({ title: '已保存路线', content: html });
+        } catch (e) {
+          layer.msg("获取失败");
+        }
+      }
+
+      layui.use("layer", function () {
+        var layer = layui.layer;
+
+        layer.msg("欢迎使用");
+      });
+      //poi
+      //输入提示
+      var autoOptions = {
+        input: "tipinput",
+        city: "青岛市",
+      };
+
+      AMap.plugin(["AMap.PlaceSearch", "AMap.AutoComplete"], function () {
+        var auto = new AMap.AutoComplete(autoOptions);
+        var placeSearch = new AMap.PlaceSearch({
+          map: map,
+        }); //构造地点查询类
+        auto.on("select", select); //注册监听，当选中某条记录时会触发
+        function select(e) {
+          placeSearch.setCity(e.poi.adcode);
+          placeSearch.search(e.poi.name); //关键字查询查询
+        }
+      });
+      // 管理后台联动：加载管理端的景点列表并在地图上展示
+      var managedMarkers = [];
+      async function loadManagedPOIs() {
+        try {
+          managedMarkers.forEach(function(m){ m.setMap(null); });
+          managedMarkers = [];
+          const res = await fetch('/api/pois');
+          const list = await res.json();
+          if (!Array.isArray(list) || list.length === 0) { layer.msg('暂无兴趣点'); return; }
+          list.forEach(function(p){
+            var marker = new AMap.Marker({
+              position: [p.lng, p.lat],
+              offset: new AMap.Pixel(-8, -8),
+              // 绿色点符号
+              content: '<div style="width:14px;height:14px;background:#16a34a;border:2px solid #ffffff;border-radius:50%;box-shadow:0 0 0 2px rgba(22,163,74,.25);"></div>',
+              title: p.name
+            });
+            marker.setMap(map);
+            marker.on('click', function(){
+              openInfo([
+                '<div class="info-middle">',
+                '<div><b>' + (p.name||'') + '</b></div>',
+                '<div>经纬度：' + p.lng + ', ' + p.lat + '</div>',
+                '<div>地址：' + (p.address||'') + '</div>',
+                '<div>标签：' + ((p.tags||[]).join('、')) + '</div>',
+                '</div>'
+              ], [p.lng, p.lat]);
+            });
+            managedMarkers.push(marker);
+          });
+          layer.msg('已加载 ' + list.length + ' 个兴趣点');
+        } catch (e) { layer.msg('加载失败'); }
+      }
+      var infoWindow;
+      //在指定位置打开信息窗体
+      function openInfo(info, lnglat) {
+        infoWindow = new AMap.InfoWindow({
+          content: info.join(""), //使用默认信息窗体框样式，显示信息内容
+        });
+
+        infoWindow.open(map, lnglat);
+      }
+      //从高德获取景点，渲染表格到div id=t
+      AMap.plugin("AMap.PlaceSearch", function () {
+        var placeSearch = new AMap.PlaceSearch({
+          pageSize: 5, // 单页显示结果条数
+          pageIndex: 1, // 页码
+          city: "青岛市", // 兴趣点城市
+          citylimit: true, //是否强制限制在设置的城市内搜索
+          map: map, // 展现结果的地图实例
+          panel: "panel2", // 结果列表将在此容器中进行展示。
+        });
+        //关键字查询
+        placeSearch.search("景点");
+      });
+      // 复现保存的路线：从后端选择一条已保存路线并在地图上绘制/动画
+      async function chooseAndReplayRoute() {
+        try {
+          const res = await fetch('/api/routes');
+          const list = await res.json();
+          if (!Array.isArray(list) || list.length === 0) { layer.msg('暂无保存路线'); return; }
+          var html = list.map(function(it, idx){
+            return '<a href="javascript:void(0)" onclick="replayRouteById(\'' + it.id + '\')">' + (idx+1) + '. ' + it.name + '</a>';
+          }).join('<br/>');
+          layer.open({ title: '选择路线复现', content: html, area: ['360px','400px'] });
+        } catch (e) { layer.msg('获取失败'); }
+      }
+
+      async function replayRouteById(id) {
+        try {
+          const res = await fetch('/api/routes');
+          const list = await res.json();
+          var item = list.find(function(x){ return x.id === id; });
+          if (!item) { layer.msg('未找到该路线'); return; }
+          var lineArr = item.coords;
+          if (!Array.isArray(lineArr) || lineArr.length < 2) { layer.msg('路线数据无效'); return; }
+          var polyline = new AMap.Polyline({
+            map: map,
+            path: lineArr,
+            showDir: true,
+            strokeColor: '#28F',
+            strokeWeight: 6,
+          });
+          AMap.plugin('AMap.MoveAnimation', function(){
+            var marker = new AMap.Marker({ map: map, position: lineArr[0], offset: new AMap.Pixel(-13, -26) });
+            marker.moveAlong(lineArr, { duration: 500, autoRotation: true });
+          });
+          map.setFitView();
+          layer.msg('已复现路线：' + (item.name||''));
+        } catch (e) { layer.msg('复现失败'); }
+      }
+
+      var hydrophoneTimer = null;
+      function openHydrophone(){
+        var contentId = 'hydrophone-content-' + Date.now();
+        var html = [
+          '<div id="'+contentId+'" style="font-size:14px;line-height:22px">',
+          '<div>经度：<span data-field="longitude">-</span></div>',
+          '<div>纬度：<span data-field="latitude">-</span></div>',
+          '<div>航向：<span data-field="heading">-</span></div>',
+          '<div>温度：<span data-field="temperature">-</span></div>',
+          '<div>湿度：<span data-field="humidity">-</span></div>',
+          '<div>气压：<span data-field="pressure">-</span></div>',
+          '<div>盐度：<span data-field="salinity">-</span></div>',
+          '<div>是否识别到船只：<span data-field="shipDetected">-</span></div>',
+          '<div>船只类型：<span data-field="shipType">-</span></div>',
+          '<div>更新时间：<span data-field="timestamp">-</span></div>',
+          '</div>'
+        ].join('');
+        var idx = layer.open({
+          title: '水听器',
+          area: ['320px','380px'],
+          content: html,
+          end: function(){
+            if (hydrophoneTimer){ clearInterval(hydrophoneTimer); hydrophoneTimer = null; }
+          }
+        });
+        function renderPayload(p){
+          try{
+            var box = document.getElementById(contentId);
+            if (!box) return;
+            function setf(k, v){
+              var el = box.querySelector('[data-field="'+k+'"]');
+              if (el) el.textContent = (v===null||v===undefined||v==='')?'-':v;
+            }
+            setf('longitude', p.longitude);
+            setf('latitude', p.latitude);
+            setf('heading', p.heading);
+            setf('temperature', p.temperature);
+            setf('humidity', p.humidity);
+            setf('pressure', p.pressure);
+            setf('salinity', p.salinity);
+            setf('shipDetected', p.shipDetected ? '是' : '否');
+            setf('shipType', p.shipType || '-');
+            setf('timestamp', p.timestamp ? new Date(p.timestamp).toLocaleString() : '-');
+          }catch(e){}
+        }
+        async function fetchLatest(){
+          try{
+            const res = await fetch('/api/hydrophone/latest');
+            if (!res.ok) return;
+            const data = await res.json();
+            renderPayload(data||{});
+          }catch(e){}
+        }
+        fetchLatest();
+        hydrophoneTimer = setInterval(fetchLatest, 2000);
+      }
+   
+   
+  
+ 
+  
+   
+    </script>
+  </body>
+  <style type="text/css">
+    #panel {
+      position: fixed;
+      background-color: white;
+      max-height: 90%;
+      overflow-y: auto;
+      top: 10px;
+      right: 120px;
+      width: 280px;
+    }
+
+    #panel .amap-call {
+      background-color: #009cf9;
+      border-top-left-radius: 4px;
+      border-top-right-radius: 4px;
+    }
+
+    #panel .amap-lib-driving {
+      border-bottom-left-radius: 4px;
+      border-bottom-right-radius: 4px;
+      overflow: hidden;
+    }
+
+    .amap-call {
+      display: none;
+    }
+  </style>
+  <style>
+    html,
+    body,
+    #container {
+      height: 100%;
+      width: 100%;
+    }
+
+    .content-window-card {
+      position: relative;
+      box-shadow: none;
+      bottom: 0;
+      left: 0;
+      width: auto;
+      padding: 0;
+    }
+
+    .content-window-card p {
+      height: 2rem;
+    }
+
+    .custom-info {
+      border: solid 1px silver;
+    }
+
+    div.info-top {
+      position: relative;
+      background: none repeat scroll 0 0 #f9f9f9;
+      border-bottom: 1px solid #ccc;
+      border-radius: 5px 5px 0 0;
+    }
+
+    div.info-top div {
+      display: inline-block;
+      color: #333333;
+      font-size: 14px;
+      font-weight: bold;
+      line-height: 31px;
+      padding: 0 10px;
+    }
+
+    div.info-top img {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      transition-duration: 0.25s;
+    }
+
+    div.info-top img:hover {
+      box-shadow: 0px 0px 5px #000;
+    }
+
+    div.info-middle {
+      font-size: 12px;
+      padding: 10px 6px;
+      line-height: 20px;
+    }
+
+    div.info-bottom {
+      height: 0px;
+      width: 100%;
+      clear: both;
+      text-align: center;
+    }
+
+    div.info-bottom img {
+      position: relative;
+      z-index: 104;
+    }
+
+    span {
+      margin-left: 5px;
+      font-size: 11px;
+    }
+
+    .info-middle img {
+      float: left;
+      margin-right: 6px;
+    }
+
+    .amap-info-content {
+      border-radius: 10px;
+    }
+  </style>
+</html>

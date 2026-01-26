@@ -1,0 +1,12 @@
+{
+  "longitude": 22222,
+  "latitude": 1111,
+  "heading": 1111,
+  "temperature": 1111,
+  "humidity": 1111,
+  "pressure": 1111,
+  "salinity": 1111,
+  "shipDetected": true,
+  "shipType": "111",
+  "timestamp": "2026-01-26T13:34:42.441Z"
+}

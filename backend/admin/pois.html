@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>POI 管理</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Microsoft YaHei", sans-serif; margin: 24px; }
+    h1 { margin: 0 0 16px; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; }
+    input, button { padding: 8px 10px; font-size: 14px; }
+    input { width: 220px; }
+    table { border-collapse: collapse; margin-top: 16px; width: 100%; }
+    th, td { border: 1px solid #ddd; padding: 8px; font-size: 14px; }
+    th { background: #f5f5f5; text-align: left; }
+    .muted { color: #666; font-size: 12px; }
+    .tag { display: inline-block; background: #eef; color: #335; padding: 2px 6px; margin-right: 6px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <script>
+    // Redirect old standalone page to unified admin
+    location.replace('/admin/index.html');
+  </script>
+  <noscript>该页面已合并，请访问 /admin/index.html</noscript>
+  <h1>POI 管理</h1>
+  <div class="row">
+    <input id="name" placeholder="名称 name" />
+    <input id="lng" placeholder="经度 lng (e.g. 120.38)" />
+    <input id="lat" placeholder="纬度 lat (e.g. 36.07)" />
+    <input id="address" placeholder="地址 address (可选)" />
+    <input id="tags" placeholder="标签 tags, 用逗号分隔 (可选)" />
+    <button id="create">新增</button>
+  </div>
+  <div class="muted" style="margin-top:8px;">提示：编辑时可在表格中直接修改后点击“保存”；删除不可恢复。</div>
+
+  <table id="tbl">
+    <thead>
+      <tr>
+        <th style="width: 200px;">名称</th>
+        <th style="width: 160px;">经度</th>
+        <th style="width: 160px;">纬度</th>
+        <th>地址</th>
+        <th style="width: 240px;">标签</th>
+        <th style="width: 160px;">操作</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    const api = {
+      list: async () => (await fetch('/api/pois')).json(),
+      create: async (payload) => (await fetch('/api/pois', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })).json(),
+      update: async (id, payload) => (await fetch('/api/pois/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })).json(),
+      remove: async (id) => fetch('/api/pois/' + id, { method: 'DELETE' })
+    };
+
+    const $ = (sel) => document.querySelector(sel);
+    const tbody = $('#tbl tbody');
+
+    function trFor(item) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><input value="${escapeHtml(item.name)}" data-k="name"/></td>
+        <td><input value="${item.lng}" data-k="lng"/></td>
+        <td><input value="${item.lat}" data-k="lat"/></td>
+        <td><input value="${escapeHtml(item.address || '')}" data-k="address"/></td>
+        <td><input value="${escapeHtml((item.tags||[]).join(','))}" data-k="tags"/></td>
+        <td>
+          <button data-act="save">保存</button>
+          <button data-act="del" style="margin-left:8px;color:#a00">删除</button>
+        </td>
+      `;
+      tr.dataset.id = item.id;
+      return tr;
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"]+/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[s]));
+    }
+
+    async function refresh() {
+      const list = await api.list();
+      tbody.innerHTML = '';
+      list.forEach(item => tbody.appendChild(trFor(item)));
+    }
+
+    $('#create').addEventListener('click', async () => {
+      const name = $('#name').value.trim();
+      const lng = Number($('#lng').value);
+      const lat = Number($('#lat').value);
+      const address = $('#address').value.trim();
+      const tags = $('#tags').value.trim() ? $('#tags').value.trim().split(',').map(s => s.trim()).filter(Boolean) : [];
+      if (!name || Number.isNaN(lng) || Number.isNaN(lat)) { alert('请填写名称、经度与纬度'); return; }
+      await api.create({ name, lng, lat, address, tags });
+      $('#name').value=''; $('#lng').value=''; $('#lat').value=''; $('#address').value=''; $('#tags').value='';
+      await refresh();
+    });
+
+    tbody.addEventListener('click', async (e) => {
+      if (e.target.tagName !== 'BUTTON') return;
+      const tr = e.target.closest('tr');
+      const id = tr.dataset.id;
+      if (e.target.dataset.act === 'del') {
+        if (confirm('确认删除该 POI？')) {
+          await api.remove(id);
+          await refresh();
+        }
+        return;
+      }
+      if (e.target.dataset.act === 'save') {
+        const inputs = tr.querySelectorAll('input[data-k]');
+        const payload = {};
+        inputs.forEach(inp => {
+          const k = inp.dataset.k;
+          let v = inp.value;
+          if (k === 'lng' || k === 'lat') v = Number(v);
+          if (k === 'tags') v = v.trim() ? v.split(',').map(s => s.trim()).filter(Boolean) : [];
+          payload[k] = v;
+        });
+        if (!payload.name || Number.isNaN(payload.lng) || Number.isNaN(payload.lat)) { alert('请填写合法的名称/经纬度'); return; }
+        await api.update(id, payload);
+        await refresh();
+      }
+    });
+
+    refresh();
+  </script>
+</body>
+</html>
