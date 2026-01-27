@@ -1,12 +1,12 @@
 {
-  "longitude": 22222,
-  "latitude": 1111,
-  "heading": 1111,
-  "temperature": 1111,
-  "humidity": 1111,
-  "pressure": 1111,
-  "salinity": 1111,
+  "longitude": 120.123456,
+  "latitude": 30.123456,
+  "heading": 45.5,
+  "temperature": 22.3,
+  "humidity": 61.2,
+  "pressure": 1013.5,
+  "salinity": 35,
   "shipDetected": true,
-  "shipType": "111",
-  "timestamp": "2026-01-26T13:34:42.441Z"
+  "shipType": "cargo",
+  "timestamp": "2026-01-26T03:10:00Z"
 }

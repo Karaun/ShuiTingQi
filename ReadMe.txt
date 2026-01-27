@@ -1,0 +1,7 @@
+端口发送
+$body = @{
+  longitude=120.123456; latitude=30.123456; heading=45.5;
+  temperature=22.3; humidity=61.2; pressure=1013.5; salinity=35.0;
+  shipDetected=$true; shipType="cargo"; timestamp="2026-01-26T03:10:00Z"
+} | ConvertTo-Json
+Invoke-RestMethod -Method Post -Uri "https://mobilegis-backend.onrender.com/api/hydrophone/update" -ContentType "application/json" -Body $body

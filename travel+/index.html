@@ -671,6 +671,7 @@
       }
 
       var hydrophoneTimer = null;
+      var hydroMarker = null; // 水听器定位点（绿色，与兴趣点样式一致）
       function openHydrophone(){
         var contentId = 'hydrophone-content-' + Date.now();
         var html = [
@@ -713,6 +714,24 @@
             setf('shipDetected', p.shipDetected ? '是' : '否');
             setf('shipType', p.shipType || '-');
             setf('timestamp', p.timestamp ? new Date(p.timestamp).toLocaleString() : '-');
+
+            // 根据最新经纬度在地图上生成/更新绿色定位点
+            var lng = Number(p.longitude), lat = Number(p.latitude);
+            if (!isNaN(lng) && !isNaN(lat)){
+              var pos = [lng, lat];
+              if (!hydroMarker){
+                hydroMarker = new AMap.Marker({
+                  position: pos,
+                  offset: new AMap.Pixel(-8, -8),
+                  content: '<div style="width:14px;height:14px;background:#16a34a;border:2px solid #ffffff;border-radius:50%;box-shadow:0 0 0 2px rgba(22,163,74,.25);"></div>',
+                  title: '水听器'
+                });
+                hydroMarker.setMap(map);
+                map.setCenter(pos);
+              } else {
+                hydroMarker.setPosition(pos);
+              }
+            }
           }catch(e){}
         }
         async function fetchLatest(){
