@@ -580,6 +580,20 @@
       });
       // 管理后台联动：加载管理端的景点列表并在地图上展示
       var managedMarkers = [];
+      var hydroMarker = null;
+      function placeHydroMarker(lng, lat){
+        try{
+          if (hydroMarker){ hydroMarker.setMap(null); hydroMarker = null; }
+          hydroMarker = new AMap.Marker({
+            position: [lng, lat],
+            offset: new AMap.Pixel(-8, -8),
+            // 绿色点符号（与兴趣点一致）
+            content: '<div style="width:14px;height:14px;background:#16a34a;border:2px solid #ffffff;border-radius:50%;box-shadow:0 0 0 2px rgba(22,163,74,.25);"></div>',
+            title: '水听器'
+          });
+          hydroMarker.setMap(map);
+        }catch(e){}
+      }
       async function loadManagedPOIs() {
         try {
           managedMarkers.forEach(function(m){ m.setMap(null); });
@@ -671,7 +685,6 @@
       }
 
       var hydrophoneTimer = null;
-      var hydroMarker = null; // 水听器定位点（绿色，与兴趣点样式一致）
       function openHydrophone(){
         var contentId = 'hydrophone-content-' + Date.now();
         var html = [
@@ -714,24 +727,6 @@
             setf('shipDetected', p.shipDetected ? '是' : '否');
             setf('shipType', p.shipType || '-');
             setf('timestamp', p.timestamp ? new Date(p.timestamp).toLocaleString() : '-');
-
-            // 根据最新经纬度在地图上生成/更新绿色定位点
-            var lng = Number(p.longitude), lat = Number(p.latitude);
-            if (!isNaN(lng) && !isNaN(lat)){
-              var pos = [lng, lat];
-              if (!hydroMarker){
-                hydroMarker = new AMap.Marker({
-                  position: pos,
-                  offset: new AMap.Pixel(-8, -8),
-                  content: '<div style="width:14px;height:14px;background:#16a34a;border:2px solid #ffffff;border-radius:50%;box-shadow:0 0 0 2px rgba(22,163,74,.25);"></div>',
-                  title: '水听器'
-                });
-                hydroMarker.setMap(map);
-                map.setCenter(pos);
-              } else {
-                hydroMarker.setPosition(pos);
-              }
-            }
           }catch(e){}
         }
         async function fetchLatest(){
@@ -740,6 +735,12 @@
             if (!res.ok) return;
             const data = await res.json();
             renderPayload(data||{});
+            var lng = Number(data?.longitude), lat = Number(data?.latitude);
+            if (!isNaN(lng) && !isNaN(lat)){
+              placeHydroMarker(lng, lat);
+              // 将视图切换到该经纬度
+              map.setZoomAndCenter(Math.max(map.getZoom(), 14), [lng, lat]);
+            }
           }catch(e){}
         }
         fetchLatest();
