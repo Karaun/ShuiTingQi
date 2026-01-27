@@ -586,9 +586,10 @@
           if (hydroMarker){ hydroMarker.setMap(null); hydroMarker = null; }
           hydroMarker = new AMap.Marker({
             position: [lng, lat],
-            offset: new AMap.Pixel(-8, -8),
-            // 绿色点符号（与兴趣点一致）
-            content: '<div style="width:14px;height:14px;background:#16a34a;border:2px solid #ffffff;border-radius:50%;box-shadow:0 0 0 2px rgba(22,163,74,.25);"></div>',
+            // 使坐标锚点对准倒三角尖端
+            offset: new AMap.Pixel(-18, -30),
+            // 大号红色倒三角（SVG），白色描边更醒目
+            content: '<svg width="36" height="36" viewBox="0 0 36 36" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,.3));"><polygon points="18,30 30,6 6,6" fill="#e53935" stroke="#ffffff" stroke-width="2"/></svg>',
             title: '水听器'
           });
           hydroMarker.setMap(map);
