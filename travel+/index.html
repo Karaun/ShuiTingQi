@@ -28,38 +28,9 @@
   </head>
 
   <body>
-    <ul class="layui-nav">
-      <li class="layui-nav-item">
-        <a onclick="startAnimation()">路径规划模拟动画</a>
-      </li>
-      <li class="layui-nav-item">
-        <a onclick="startAnimation2()">开始选择途径点</a>
-      </li>
-      <li class="layui-nav-item">
-        <a onclick="endAnimation2()">结束选择途径点</a>
-      </li>
-      <li class="layui-nav-item">
-        <a onclick="weather()">天气预报</a>
-      </li>
-      <li class="layui-nav-item">
-        &emsp;地点搜索&emsp;<input style="height: 20px" id="tipinput" />
-      </li>
-      <li class="layui-nav-item">
-        <a onclick="saveRoute()">保存路线</a>
-      </li>
-      <li class="layui-nav-item">
-        <a onclick="viewRoutes()">查看路线</a>
-      </li>
-      <li class="layui-nav-item">
-        <a onclick="loadManagedPOIs()">加载兴趣点</a>
-      </li>
-      <li class="layui-nav-item">
-        <a onclick="chooseAndReplayRoute()">复现保存路线</a>
-      </li>
-      <li class="layui-nav-item">
-        <a onclick="openHydrophone()">水听器</a>
-      </li>
-    </ul>
+    <div style="height:50px;line-height:50px;padding:0 16px;background:#f1faff;border-bottom:1px solid #ffffff;font-weight:600;font-size:16px;text-align:center;">
+      水听器监测设备
+    </div>
 
     <div style="height: 91.5%" id="container"></div>
 
@@ -71,10 +42,22 @@
         width: 300px;
         background-color: white;
         left: 10px;
+        padding-bottom: 10px;
       "
     >
-      <h4 style="margin: 10px">地点列表</h4>
-      <div id="panel2"></div>
+      <h4 style="margin: 10px">水听器</h4>
+      <div id="hydro-panel" style="margin:10px 12px 14px 12px; font-size:14px; line-height:22px;">
+        <div>经度：<span data-field="longitude">-</span></div>
+        <div>纬度：<span data-field="latitude">-</span></div>
+        <div>航向：<span data-field="heading">-</span></div>
+        <div>温度：<span data-field="temperature">-</span></div>
+        <div>湿度：<span data-field="humidity">-</span></div>
+        <div>气压：<span data-field="pressure">-</span></div>
+        <div>盐度：<span data-field="salinity">-</span></div>
+        <div>是否识别到船只：<span data-field="shipDetected">-</span></div>
+        <div>船只类型：<span data-field="shipType">-</span></div>
+        <div>更新时间：<span data-field="timestamp">-</span></div>
+      </div>
     </div>
     <div id="panel"></div>
     <script>
@@ -562,22 +545,7 @@
       });
       //poi
       //输入提示
-      var autoOptions = {
-        input: "tipinput",
-        city: "青岛市",
-      };
-
-      AMap.plugin(["AMap.PlaceSearch", "AMap.AutoComplete"], function () {
-        var auto = new AMap.AutoComplete(autoOptions);
-        var placeSearch = new AMap.PlaceSearch({
-          map: map,
-        }); //构造地点查询类
-        auto.on("select", select); //注册监听，当选中某条记录时会触发
-        function select(e) {
-          placeSearch.setCity(e.poi.adcode);
-          placeSearch.search(e.poi.name); //关键字查询查询
-        }
-      });
+      
       // 管理后台联动：加载管理端的景点列表并在地图上展示
       var managedMarkers = [];
       var hydroMarker = null;
@@ -636,18 +604,7 @@
         infoWindow.open(map, lnglat);
       }
       //从高德获取景点，渲染表格到div id=t
-      AMap.plugin("AMap.PlaceSearch", function () {
-        var placeSearch = new AMap.PlaceSearch({
-          pageSize: 5, // 单页显示结果条数
-          pageIndex: 1, // 页码
-          city: "青岛市", // 兴趣点城市
-          citylimit: true, //是否强制限制在设置的城市内搜索
-          map: map, // 展现结果的地图实例
-          panel: "panel2", // 结果列表将在此容器中进行展示。
-        });
-        //关键字查询
-        placeSearch.search("景点");
-      });
+      
       // 复现保存的路线：从后端选择一条已保存路线并在地图上绘制/动画
       async function chooseAndReplayRoute() {
         try {
@@ -686,67 +643,46 @@
       }
 
       var hydrophoneTimer = null;
-      function openHydrophone(){
-        var contentId = 'hydrophone-content-' + Date.now();
-        var html = [
-          '<div id="'+contentId+'" style="font-size:14px;line-height:22px">',
-          '<div>经度：<span data-field="longitude">-</span></div>',
-          '<div>纬度：<span data-field="latitude">-</span></div>',
-          '<div>航向：<span data-field="heading">-</span></div>',
-          '<div>温度：<span data-field="temperature">-</span></div>',
-          '<div>湿度：<span data-field="humidity">-</span></div>',
-          '<div>气压：<span data-field="pressure">-</span></div>',
-          '<div>盐度：<span data-field="salinity">-</span></div>',
-          '<div>是否识别到船只：<span data-field="shipDetected">-</span></div>',
-          '<div>船只类型：<span data-field="shipType">-</span></div>',
-          '<div>更新时间：<span data-field="timestamp">-</span></div>',
-          '</div>'
-        ].join('');
-        var idx = layer.open({
-          title: '水听器',
-          area: ['320px','380px'],
-          content: html,
-          end: function(){
-            if (hydrophoneTimer){ clearInterval(hydrophoneTimer); hydrophoneTimer = null; }
+      function renderHydroPanel(p){
+        try{
+          var box = document.getElementById('hydro-panel');
+          if (!box) return;
+          function setf(k, v){
+            var el = box.querySelector('[data-field="'+k+'"]');
+            if (el) el.textContent = (v===null||v===undefined||v==='')?'-':v;
           }
-        });
-        function renderPayload(p){
-          try{
-            var box = document.getElementById(contentId);
-            if (!box) return;
-            function setf(k, v){
-              var el = box.querySelector('[data-field="'+k+'"]');
-              if (el) el.textContent = (v===null||v===undefined||v==='')?'-':v;
-            }
-            setf('longitude', p.longitude);
-            setf('latitude', p.latitude);
-            setf('heading', p.heading);
-            setf('temperature', p.temperature);
-            setf('humidity', p.humidity);
-            setf('pressure', p.pressure);
-            setf('salinity', p.salinity);
-            setf('shipDetected', p.shipDetected ? '是' : '否');
-            setf('shipType', p.shipType || '-');
-            setf('timestamp', p.timestamp ? new Date(p.timestamp).toLocaleString() : '-');
-          }catch(e){}
-        }
-        async function fetchLatest(){
-          try{
-            const res = await fetch('/api/hydrophone/latest');
-            if (!res.ok) return;
-            const data = await res.json();
-            renderPayload(data||{});
-            var lng = Number(data?.longitude), lat = Number(data?.latitude);
-            if (!isNaN(lng) && !isNaN(lat)){
-              placeHydroMarker(lng, lat);
-              // 将视图切换到该经纬度
-              map.setZoomAndCenter(Math.max(map.getZoom(), 14), [lng, lat]);
-            }
-          }catch(e){}
-        }
-        fetchLatest();
-        hydrophoneTimer = setInterval(fetchLatest, 2000);
+          setf('longitude', p.longitude);
+          setf('latitude', p.latitude);
+          setf('heading', p.heading);
+          setf('temperature', p.temperature);
+          setf('humidity', p.humidity);
+          setf('pressure', p.pressure);
+          setf('salinity', p.salinity);
+          setf('shipDetected', p.shipDetected ? '是' : '否');
+          setf('shipType', p.shipType || '-');
+          setf('timestamp', p.timestamp ? new Date(p.timestamp).toLocaleString() : '-');
+        }catch(e){}
       }
+      async function refreshHydroFromApi(){
+        try{
+          const res = await fetch('/api/hydrophone/latest');
+          if (!res.ok) return;
+          const data = await res.json();
+          renderHydroPanel(data||{});
+          var lng = Number(data?.longitude), lat = Number(data?.latitude);
+          if (!isNaN(lng) && !isNaN(lat)){
+            placeHydroMarker(lng, lat);
+            map.setZoomAndCenter(Math.max(map.getZoom(), 14), [lng, lat]);
+          }
+        }catch(e){}
+      }
+      function openHydrophone(){
+        // 点击按钮时，立即刷新一次
+        refreshHydroFromApi();
+      }
+      // 页面加载后开始轮询刷新
+      refreshHydroFromApi();
+      hydrophoneTimer = setInterval(refreshHydroFromApi, 2000);
    
    
   
